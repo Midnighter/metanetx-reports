@@ -1,0 +1,125 @@
+---
+title: "Reactions Summary"
+author: "Moritz E. Beber"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+params:
+  database: "metanetx.sqlite"
+---
+
+___
+
+## Intro
+
+A summary of the final database content.
+
+#### Transformation Steps:
+
+* Deduplicated identifiers per MNX reaction and namespace
+* Deduplicated names per MNX reaction and namespace
+* Added deprecated MNX identifiers
+* Added reaction names from KEGG, ModelSEED, and BiGG
+* Added further EC numbers from ExPASy
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+options(knitr.kable.NA = "")
+```
+
+```{r dependencies, include=FALSE}
+requireNamespace("DBI")
+requireNamespace("RSQLite")
+requireNamespace("dbplyr")
+requireNamespace("dplyr")
+requireNamespace("tidyr")
+requireNamespace("knitr")
+requireNamespace("forcats")
+requireNamespace("ggplot2")
+`%>%` <- dplyr::`%>%`
+```
+
+```{r scripts, include=FALSE}
+source("scripts/db_helpers.R")
+```
+
+```{r, include=FALSE}
+con <- DBI::dbConnect(RSQLite::SQLite(), params$database)
+```
+
+```{r extract-reaction, include=FALSE}
+reactions <- dplyr::tbl(con, "reactions")
+reaction_annotations <- dplyr::tbl(con, "reaction_annotations")
+reaction_names <- dplyr::tbl(con, "reaction_names")
+namespaces <- dplyr::tbl(con, "namespaces")
+```
+
+```{r include=FALSE}
+annotations <- reactions %>%
+  dplyr::select(id) %>%
+  dplyr::left_join(
+    reaction_annotations %>%
+      dplyr::select(reaction_id, identifier, is_deprecated, namespace_id),
+    by = c("id" = "reaction_id")
+  ) %>%
+  dplyr::left_join(
+    namespaces %>%
+      dplyr::select(id, prefix),
+    by = c("namespace_id" = "id")
+  ) %>%
+  dplyr::select(id, prefix, identifier, is_deprecated)
+```
+
+```{r include=FALSE}
+names <- reactions %>%
+  dplyr::select(id) %>%
+  dplyr::left_join(
+    reaction_names %>%
+      dplyr::select(reaction_id, name, namespace_id),
+    by = c("id" = "reaction_id")
+  ) %>%
+  dplyr::left_join(
+    namespaces %>%
+      dplyr::select(id, prefix),
+    by = c("namespace_id" = "id")
+  ) %>%
+  dplyr::select(id, prefix, name)
+```
+
+## Annotation
+
+```{r, results='asis'}
+annotations %>% summarize_annotation()
+```
+
+```{r, results='asis'}
+annotations %>% summarize_annotation_sources()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per reaction and the number of unique source namespaces per reaction'}
+annotations %>% plot_annotation()
+```
+
+## Names
+
+```{r, results='asis'}
+names %>% summarize_names()
+```
+
+```{r, results='asis'}
+names %>% summarize_name_sources()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of names per reaction and  the number of unique source namespaces per reaction.'}
+names %>% plot_names()
+```
+
+```{r, include=FALSE}
+DBI::dbDisconnect(con)
+```

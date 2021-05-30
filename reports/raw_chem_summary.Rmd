@@ -1,0 +1,306 @@
+---
+title: "MetaNetX Chemicals Summary"
+author: "Moritz E. Beber"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+params:
+  chem_prop: metanetx-nf/results/mnx-4.2-processed/processed_chem_prop.tsv
+  chem_xref: metanetx-nf/results/mnx-4.2-processed/processed_chem_xref.tsv
+  chem_depr: metanetx-nf/results/mnx-4.2-processed/processed_chem_depr.tsv
+---
+
+___
+
+## Intro
+
+A summary of the raw tables downloaded from MetaNetX.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+options(knitr.kable.NA = "")
+```
+
+```{r dependencies, include=FALSE}
+requireNamespace("readr")
+requireNamespace("dplyr")
+requireNamespace("tidyr")
+requireNamespace("knitr")
+requireNamespace("forcats")
+requireNamespace("scales")
+requireNamespace("ggplot2")
+`%>%` <- dplyr::`%>%`
+```
+
+```{r extract-chemical, include=FALSE, cache=TRUE}
+chem_prop <- readr::read_tsv(params$chem_prop)
+chem_xref <- readr::read_tsv(params$chem_xref)
+chem_depr <- readr::read_tsv(params$chem_depr)
+```
+
+## Properties
+
+```{r, include=FALSE}
+numbers <- chem_prop %>%
+  dplyr::summarise(
+    num_chems = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
+    num_formula = length(formula[!is.na(formula)]),
+    num_charge = length(charge[!is.na(charge)]),
+    num_mass = length(mass[!is.na(mass)]),
+    num_inchi = length(inchi[!is.na(inchi)]),
+    num_inchi_key = length(inchi_key[!is.na(inchi_key)]),
+    num_smiles = length(smiles[!is.na(smiles)]),
+    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+  )
+```
+
+
+```{r, results='asis'}
+numbers %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Chemicals",
+      "with formula",
+      "with charge",
+      "with mass",
+      "with InChI",
+      "with InChIKey",
+      "with SMILES",
+      "Number of Namespaces"
+    ),
+    caption = "The number of chemicals with properties and sources for them in MetaNetX."
+  )
+```
+
+```{r, results='asis'}
+numbers %>%
+  dplyr::select(num_chems:num_smiles) %>%
+  dplyr::mutate(
+    dplyr::across(.fns = ~ .x / !!(numbers$num_chems)),
+    dplyr::across(.fns = ~ scales::percent(.x, accuracy = 0.01))
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Percent of Chemicals",
+      "with formula",
+      "with charge",
+      "with mass",
+      "with InChI",
+      "with InChIKey",
+      "with SMILES"
+    ),
+    caption = "The percentage of chemical information in MetaNetX."
+  )
+```
+
+```{r, results='asis'}
+chem_prop %>%
+  dplyr::select(prefix) %>%
+  dplyr::count(prefix) %>%
+  dplyr::arrange(prefix) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c("Namespace", "Frequency"),
+    caption = "The source namespaces from which chemicals are included in MetaNetX."
+  )
+```
+
+```{r, include=FALSE}
+summarize_formula <- function(tbl, column) {
+  return(
+    tbl %>%
+      dplyr::summarize(
+        n = dplyr::n(),
+        num_star = grepl("*", {{ column }}, fixed = TRUE) %>%
+          as.integer() %>%
+          sum(),
+        num_rest = grepl("R[^a-z]", {{ column }}) %>%
+          as.integer() %>%
+          sum(),
+        num_z = grepl("Z[^a-y]", {{ column }}) %>%
+          as.integer() %>%
+          sum()
+      )
+  )
+}
+```
+
+
+```{r, results='asis'}
+chem_prop %>%
+  tidyr::drop_na(formula) %>%
+  summarize_formula(formula) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Formulae",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "Chemical formulae that are not fully determined."
+  )
+```
+
+```{r, results='asis'}
+chem_prop %>%
+  tidyr::drop_na(inchi) %>%
+  summarize_formula(inchi) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of InChIs",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "InChIs that are not fully determined."
+  )
+```
+
+```{r, results='asis'}
+chem_prop %>%
+  tidyr::drop_na(smiles) %>%
+  summarize_formula(smiles) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of SMILES",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "SMILES that are not fully determined."
+  )
+```
+
+```{r, include=FALSE}
+duplicate_inchi <- chem_prop %>%
+  tidyr::drop_na(inchi) %>%
+  dplyr::count(inchi) %>%
+  dplyr::filter(n > 1)
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='Multiple occurrences of the same InChI.'}
+duplicate_inchi %>%
+  ggplot2::ggplot(ggplot2::aes(x = n)) +
+  ggplot2::geom_histogram(stat = "count", color = "white") +
+  ggplot2::xlab("Multiples of InChI") +
+  ggplot2::ylab("Count")
+```
+
+```{r, results='asis'}
+duplicate_inchi %>%
+  summarize_formula(inchi) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of InChIs",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "Duplicated InChIs that are not fully determined."
+  )
+```
+
+## Cross-References
+
+```{r, results='asis'}
+chem_xref %>%
+  dplyr::summarise(
+    num_xref = dplyr::n(),
+    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Cross-References",
+      "Number of Namespaces"
+    ),
+    caption = "Chemicals with cross-references to other databases."
+  )
+```
+
+```{r, results='asis'}
+chem_xref %>%
+  dplyr::select(prefix) %>%
+  dplyr::count(prefix) %>%
+  dplyr::arrange(prefix) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c("Namespace", "Frequency"),
+    caption = "The namespaces to which cross-references from MetaNetX are established."
+  )
+```
+
+```{r, include=FALSE}
+num_xref <- chem_xref %>%
+  dplyr::group_by(mnx_id) %>%
+  dplyr::summarise(
+    num_xref = dplyr::n_distinct(identifier[!is.na(identifier)]),
+    num_prefix = dplyr::n_distinct(prefix[!is.na(prefix)])
+  ) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_longer(!mnx_id) %>%
+  dplyr::mutate(
+    name = forcats::fct_recode(name,
+      "Namespaces" = "num_prefix",
+      "Cross-References" = "num_xref"
+    )
+  )
+```
+
+
+```{r, fig.align='center', dpi=300, fig.cap='Number of namespaces and cross-references per chemical in MetaNetX. Only shown for chemicals where this number is greater than one.'}
+num_xref %>%
+  dplyr::filter(value > 1) %>%
+  ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
+  ggplot2::geom_boxplot(show.legend = FALSE) +
+  ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
+  ggplot2::scale_y_log10() +
+  ggplot2::xlab(NULL) +
+  ggplot2::ylab("Number")
+```
+
+## Deprecated MetaNetX Identifiers
+
+```{r, results='asis'}
+chem_depr %>%
+  dplyr::summarise(
+    num_chems = dplyr::n_distinct(current_id[!is.na(current_id)]),
+    num_deprecated = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+  ) %>%
+  knitr::kable(
+    col.names = c(
+      "Number of Chemicals",
+      "Number of Deprecated Identifiers"
+    ),
+    caption = "The total number of chemicals and how many deprecated identifiers there are."
+  )
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='Number of deprecated MNX identifiers per chemical'}
+if (nrow(chem_depr) > 0) {
+  chem_depr %>%
+    dplyr::group_by(current_id) %>%
+    dplyr::summarise(
+      num_depr = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+    ) %>%
+    dplyr::ungroup() %>%
+    ggplot2::ggplot(ggplot2::aes(x = "Deprecated", y = num_depr)) +
+    ggplot2::geom_boxplot(show.legend = FALSE) +
+    ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
+    ggplot2::scale_y_log10() +
+    ggplot2::xlab(NULL) +
+    ggplot2::ylab("Number")
+}
+```

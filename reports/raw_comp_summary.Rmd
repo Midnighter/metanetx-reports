@@ -1,0 +1,163 @@
+---
+title: "MetaNetX Compartments Summary"
+author: "Moritz E. Beber"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+params:
+  comp_prop: metanetx-nf/results/mnx-4.2-processed/processed_comp_prop.tsv
+  comp_xref: metanetx-nf/results/mnx-4.2-processed/processed_comp_xref.tsv
+  comp_depr: metanetx-nf/results/mnx-4.2-processed/processed_comp_depr.tsv
+---
+
+___
+
+## Intro
+
+A summary of the raw tables downloaded from MetaNetX.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+options(knitr.kable.NA = "")
+```
+
+```{r dependencies, include=FALSE}
+requireNamespace("readr")
+requireNamespace("dplyr")
+requireNamespace("tidyr")
+requireNamespace("knitr")
+requireNamespace("forcats")
+requireNamespace("ggplot2")
+requireNamespace("ggforce")
+`%>%` <- dplyr::`%>%`
+```
+
+```{r extract-compartment, include=FALSE, cache=TRUE}
+comp_prop <- readr::read_tsv(params$comp_prop)
+comp_xref <- readr::read_tsv(params$comp_xref)
+comp_depr <- readr::read_tsv(params$comp_depr)
+```
+
+## Properties
+
+```{r, results='asis'}
+comp_prop %>%
+  dplyr::summarise(
+    num_comps = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
+    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Compartments",
+      "Number of Namespaces"
+    ),
+    caption = "The number of compartments and sources for them in MetaNetX."
+  )
+```
+
+```{r, results='asis'}
+comp_prop %>%
+  dplyr::select(prefix) %>%
+  dplyr::count(prefix) %>%
+  dplyr::arrange(prefix) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c("Namespace", "Frequency"),
+    caption = "The source namespaces from which compartments are included in MetaNetX."
+  )
+```
+
+## Cross-References
+
+```{r, results='asis'}
+comp_xref %>%
+  dplyr::summarise(
+    num_comps = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
+    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Compartments",
+      "Number of Namespaces"
+    ),
+    caption = "Compartments with cross-references to other databases."
+  )
+```
+
+```{r, results='asis'}
+comp_xref %>%
+  dplyr::select(prefix) %>%
+  dplyr::count(prefix) %>%
+  dplyr::arrange(prefix) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c("Namespace", "Frequency"),
+    caption = "The namespaces to which cross-references from MetaNetX are established."
+  )
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='Number of namespaces and cross-references per compartment in MetaNetX.'}
+comp_xref %>%
+  dplyr::group_by(mnx_id) %>%
+  dplyr::summarise(
+    num_xref = dplyr::n_distinct(identifier[!is.na(identifier)]),
+    num_prefix = dplyr::n_distinct(prefix[!is.na(prefix)])
+  ) %>%
+  dplyr::ungroup() %>%
+  tidyr::pivot_longer(!mnx_id) %>%
+  dplyr::mutate(
+    name = forcats::fct_recode(name,
+      "Namespaces" = "num_prefix",
+      "Cross-References" = "num_xref"
+    )
+  ) %>%
+  ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
+  ggforce::geom_sina(scale = FALSE, show.legend = FALSE) +
+  ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
+  ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0, show.legend = FALSE) +
+  ggplot2::xlab(NULL) +
+  ggplot2::ylab("Number")
+```
+
+## Deprecated MetaNetX Identifiers
+
+```{r, results='asis'}
+comp_depr %>%
+  dplyr::summarise(
+    num_comps = dplyr::n_distinct(current_id[!is.na(current_id)]),
+    num_deprecated = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Compartments",
+      "Number of Deprecated Identifiers"
+    ),
+    caption = "The total number of compartments and how many deprecated identifiers there are."
+  )
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='Number of deprecated MNX identifiers per compartment.'}
+if (nrow(comp_depr) > 0) {
+  comp_depr %>%
+    dplyr::group_by(current_id) %>%
+    dplyr::summarise(
+      num_depr = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+    ) %>%
+    dplyr::ungroup() %>%
+    ggplot2::ggplot(ggplot2::aes(x = "Deprecated", y = num_depr)) +
+    ggforce::geom_sina(scale = FALSE, show.legend = FALSE) +
+    ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
+    ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0, show.legend = FALSE) +
+    ggplot2::xlab(NULL) +
+    ggplot2::ylab("Number")
+}
+```

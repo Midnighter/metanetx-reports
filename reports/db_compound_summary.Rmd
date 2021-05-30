@@ -1,0 +1,290 @@
+---
+title: "MetaNetX Chemicals Summary"
+author: "Moritz E. Beber"
+date: '`r format(Sys.time(), "%Y-%m-%d")`'
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 3
+params:
+  database: "metanetx.sqlite"
+---
+
+___
+
+## Intro
+
+A summary of the final database content.
+
+#### Transformation Steps:
+
+* Deduplicated identifiers per MNX reaction and namespace
+* Deduplicated names per MNX reaction and namespace
+* Deduplicated InChIs and combined identifiers and names
+* Added deprecated MNX identifiers
+* Attempted to generate additional InChIs from KEGG MDL MOL blocks
+  (this led to more structures in the past but with MNX 4.2 adds no more information)
+* Added additional compounds from eQuilibrator list via PubChem, if they don't exist
+  already (tested by InChI)
+* Added more structural information (InChI, SMILES, formula, mass, charge) from
+  either InChI or SMILES if they are present but other information is not
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, error = FALSE)
+options(knitr.kable.NA = "")
+```
+
+```{r dependencies, include=FALSE}
+requireNamespace("DBI")
+requireNamespace("RSQLite")
+requireNamespace("dbplyr")
+requireNamespace("dplyr")
+requireNamespace("tidyr")
+requireNamespace("knitr")
+requireNamespace("forcats")
+requireNamespace("scales")
+requireNamespace("ggplot2")
+`%>%` <- dplyr::`%>%`
+```
+
+```{r scripts, include=FALSE}
+source("scripts/db_helpers.R")
+```
+
+```{r, include=FALSE}
+con <- DBI::dbConnect(RSQLite::SQLite(), params$database)
+```
+
+```{r extract-chemical, include=FALSE}
+compounds <- dplyr::tbl(con, "compounds")
+compound_annotations <- dplyr::tbl(con, "compound_annotations")
+compound_names <- dplyr::tbl(con, "compound_names")
+namespaces <- dplyr::tbl(con, "namespaces")
+```
+
+```{r include=FALSE}
+annotations <- compounds %>%
+  dplyr::select(id) %>%
+  dplyr::left_join(
+    compound_annotations %>%
+      dplyr::select(compound_id, identifier, is_deprecated, namespace_id),
+    by = c("id" = "compound_id")
+  ) %>%
+  dplyr::left_join(
+    namespaces %>%
+      dplyr::select(id, prefix),
+    by = c("namespace_id" = "id")
+  ) %>%
+  dplyr::select(id, prefix, identifier, is_deprecated)
+```
+
+```{r include=FALSE}
+names <- compounds %>%
+  dplyr::select(id) %>%
+  dplyr::left_join(
+    compound_names %>%
+      dplyr::select(compound_id, name, namespace_id),
+    by = c("id" = "compound_id")
+  ) %>%
+  dplyr::left_join(
+    namespaces %>%
+      dplyr::select(id, prefix),
+    by = c("namespace_id" = "id")
+  ) %>%
+  dplyr::select(id, prefix, name)
+```
+
+## Properties
+
+```{r, include=FALSE}
+numbers <- compounds %>%
+  dplyr::summarise(
+    num_chems = COUNT(id),
+    num_formula = COUNT(chemical_formula),
+    num_charge = COUNT(charge),
+    num_mass = COUNT(mass),
+    num_inchi = COUNT(inchi),
+    num_inchi_key = COUNT(inchi_key),
+    num_smiles = COUNT(smiles)
+  ) %>%
+  dplyr::collect()
+```
+
+
+```{r, results='asis'}
+numbers %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Chemicals",
+      "with formula",
+      "with charge",
+      "with mass",
+      "with InChI",
+      "with InChIKey",
+      "with SMILES"
+    ),
+    caption = "The number of chemicals with properties and sources for them in MetaNetX."
+  )
+```
+
+```{r, results='asis'}
+numbers %>%
+  dplyr::mutate(
+    dplyr::across(.fns = ~ .x / !!(numbers$num_chems)),
+    dplyr::across(.fns = ~ scales::percent(.x, accuracy = 0.01))
+  ) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Percent of Chemicals",
+      "with formula",
+      "with charge",
+      "with mass",
+      "with InChI",
+      "with InChIKey",
+      "with SMILES"
+    ),
+    caption = "The percentage of chemical information in MetaNetX."
+  )
+```
+
+```{r, include=FALSE}
+summarize_formula <- function(tbl, column) {
+  tibble::tibble(
+    n = tbl %>%
+      dplyr::summarise(n = COUNT({{ column }})) %>%
+      dplyr::pull(n),
+    num_star = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%*%") %>%
+      dplyr::summarise(num_star = COUNT({{ column }})) %>%
+      dplyr::pull(num_star),
+    num_rest = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%R%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("R[^a-z]", {{ column }})) %>%
+      dplyr::summarise(num_rest = dplyr::n()) %>%
+      dplyr::pull(num_rest),
+    num_z = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%Z%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("Z[^a-y]", {{ column }})) %>%
+      dplyr::summarise(num_z = dplyr::n()) %>%
+      dplyr::pull(num_z),
+  )
+}
+```
+
+```{r, results='asis'}
+summarize_formula(compounds, chemical_formula) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of Formulae",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "Chemical formulae that are not fully determined."
+  )
+```
+
+```{r, results='asis'}
+summarize_formula(compounds, inchi) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of InChIs",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "InChIs that are not fully determined."
+  )
+```
+
+```{r, results='asis'}
+summarize_formula(compounds, smiles) %>%
+  knitr::kable(
+    format.args = list(big.mark = ","),
+    col.names = c(
+      "Number of SMILES",
+      "with `*`",
+      "with `R`",
+      "with `Z[z]`"
+    ),
+    caption = "SMILES that are not fully determined."
+  )
+```
+
+```{r, include=FALSE}
+duplicate_inchi <- compounds %>%
+  dplyr::filter(!is.null(inchi)) %>%
+  dplyr::count(inchi) %>%
+  dplyr::collect() %>%
+  dplyr::filter(n > 1)
+```
+
+There are `r nrow(duplicate_inchi)` duplicated InChIs.
+
+```{r, fig.align='center', dpi=300, fig.cap='Multiple occurrences of the same InChI.'}
+if (nrow(duplicate_inchi) > 0) {
+  duplicate_inchi %>%
+    ggplot2::ggplot(ggplot2::aes(x = n)) +
+    ggplot2::geom_histogram(stat = "count", color = "white") +
+    ggplot2::xlab("Multiples of InChI") +
+    ggplot2::ylab("Count")
+}
+```
+
+```{r, results='asis'}
+if (nrow(duplicate_inchi) > 0) {
+  summarize_formula(duplicate_inchi, inchi) %>%
+    knitr::kable(
+      format.args = list(big.mark = ","),
+      col.names = c(
+        "Number of InChIs",
+        "with `*`",
+        "with `R`",
+        "with `Z[z]`"
+      ),
+      caption = "Duplicated InChIs that are not fully determined."
+    )
+}
+```
+
+## Annotation
+
+```{r, results='asis'}
+annotations %>% summarize_annotation()
+```
+
+```{r, results='asis'}
+annotations %>% summarize_annotation_sources()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per compound and the number of unique source namespaces per compound.'}
+annotations %>% plot_annotation()
+```
+
+## Names
+
+```{r, results='asis'}
+names %>% summarize_names()
+```
+
+```{r, results='asis'}
+names %>% summarize_name_sources()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of names per compound and  the number of unique source namespaces per compound'}
+names %>% plot_names()
+```
+
+```{r, include=FALSE}
+DBI::dbDisconnect(con)
+```

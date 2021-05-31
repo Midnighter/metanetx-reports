@@ -11,7 +11,7 @@ output:
     toc: yes
     toc_depth: 3
 params:
-  database: "metanetx.sqlite"
+  database: "../metanetx.sqlite"
 ---
 
 ___
@@ -53,6 +53,7 @@ requireNamespace("ggplot2")
 
 ```{r scripts, include=FALSE}
 source("scripts/db_helpers.R")
+source("scripts/venn.R")
 ```
 
 ```{r, include=FALSE}
@@ -106,10 +107,10 @@ numbers <- compounds %>%
     num_chems = COUNT(id),
     num_formula = COUNT(chemical_formula),
     num_charge = COUNT(charge),
+    num_smiles = COUNT(smiles),
     num_mass = COUNT(mass),
     num_inchi = COUNT(inchi),
-    num_inchi_key = COUNT(inchi_key),
-    num_smiles = COUNT(smiles)
+    num_inchi_key = COUNT(inchi_key)
   ) %>%
   dplyr::collect()
 ```
@@ -123,10 +124,10 @@ numbers %>%
       "Number of Chemicals",
       "with formula",
       "with charge",
+      "with SMILES",
       "with mass",
       "with InChI",
-      "with InChIKey",
-      "with SMILES"
+      "with InChIKey"
     ),
     caption = "The number of chemicals with properties and sources for them in MetaNetX."
   )
@@ -144,13 +145,25 @@ numbers %>%
       "Percent of Chemicals",
       "with formula",
       "with charge",
+      "with SMILES",
       "with mass",
       "with InChI",
-      "with InChIKey",
-      "with SMILES"
+      "with InChIKey"
     ),
     caption = "The percentage of chemical information in MetaNetX."
   )
+```
+
+```{r, results='hide', fig.align='center', dpi=300, fig.cap='Venn diagram of structural annotation and mass.'}
+compounds %>%
+  dplyr::rename(formula = chemical_formula) %>%
+  plot_venn_mass(id)
+```
+
+```{r, results='hide', fig.align='center', dpi=300, fig.cap='Venn diagram of structural annotation and electric charge.'}
+compounds %>%
+  dplyr::rename(formula = chemical_formula) %>%
+  plot_venn_charge(id)
 ```
 
 ```{r, include=FALSE}

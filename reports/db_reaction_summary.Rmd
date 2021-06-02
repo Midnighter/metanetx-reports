@@ -102,8 +102,22 @@ annotations %>% summarize_annotation()
 annotations %>% summarize_annotation_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per reaction and the number of unique source namespaces per reaction'}
-annotations %>% plot_annotation()
+```{r, include=FALSE}
+ann_per_reaction <- annotations %>% annotation_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct identifiers per reaction.'}
+ann_per_reaction %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_ann)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Identifiers per Reaction") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per reaction and the number of unique source namespaces per reaction. Only reactions that have more than two identifiers are included.'}
+ann_per_reaction %>%
+  dplyr::filter(num_ann > 2) %>%
+  plot_annotation()
 ```
 
 ## Names
@@ -116,8 +130,22 @@ names %>% summarize_names()
 names %>% summarize_name_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of names per reaction and  the number of unique source namespaces per reaction.'}
-names %>% plot_names()
+```{r, include=FALSE}
+names_per_reaction <- names %>% name_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct names per reaction.'}
+names_per_reaction %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_name)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Names per Reaction") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of names per reaction and  the number of unique source namespaces per reaction. Only reactions that have more than one name are included.'}
+names_per_reaction %>%
+  dplyr::filter(num_name > 1) %>%
+  plot_names()
 ```
 
 ```{r, include=FALSE}

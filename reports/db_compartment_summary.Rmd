@@ -100,8 +100,22 @@ annotations %>% summarize_annotation()
 annotations %>% summarize_annotation_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per compartment and the number of unique source namespaces per compartment.'}
-annotations %>% plot_annotation()
+```{r, include=FALSE}
+ann_per_compartment <- annotations %>% annotation_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct identifiers per compartment.'}
+ann_per_compartment %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_ann)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Identifiers per Compartment") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per compartment and the number of unique source namespaces per compartment. Only compartments that have more than two identifiers are included.'}
+ann_per_compartment %>%
+  dplyr::filter(num_ann > 2) %>%
+  plot_annotation()
 ```
 
 ## Names
@@ -114,8 +128,22 @@ names %>% summarize_names()
 names %>% summarize_name_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of names per compartment and  the number of unique source namespaces per compartment.'}
-names %>% plot_names()
+```{r, include=FALSE}
+names_per_compartment <- names %>% name_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct names per compartment.'}
+names_per_compartment %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_name)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Names per Compartment") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of names per compartment and  the number of unique source namespaces per compartment. Only compartments that have more than one name are included.'}
+names_per_compartment %>%
+  dplyr::filter(num_name > 1) %>%
+  plot_names()
 ```
 
 ```{r, include=FALSE}

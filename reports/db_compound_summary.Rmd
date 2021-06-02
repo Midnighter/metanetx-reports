@@ -280,8 +280,22 @@ annotations %>% summarize_annotation()
 annotations %>% summarize_annotation_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per compound and the number of unique source namespaces per compound.'}
-annotations %>% plot_annotation()
+```{r, include=FALSE}
+ann_per_compound <- annotations %>% annotation_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct identifiers per compound.'}
+ann_per_compound %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_ann)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Identifiers per Compound") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per compound and the number of unique source namespaces per compound. Only compounds that have more than two identifiers are included.'}
+ann_per_compound %>%
+  dplyr::filter(num_ann > 2) %>%
+  plot_annotation()
 ```
 
 ## Names
@@ -294,8 +308,22 @@ names %>% summarize_names()
 names %>% summarize_name_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='The number of names per compound and  the number of unique source namespaces per compound'}
-names %>% plot_names()
+```{r, include=FALSE}
+names_per_compound <- names %>% name_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct names per compound.'}
+names_per_compound %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_name)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Names per Compound") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of names per compound and  the number of unique source namespaces per compound. Only compounds that have more than one name are included.'}
+names_per_compound %>%
+  dplyr::filter(num_name > 1) %>%
+  plot_names()
 ```
 
 ```{r, include=FALSE}

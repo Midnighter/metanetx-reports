@@ -36,7 +36,7 @@ summarize_annotation_sources <- function(tbl) {
     )
 }
 
-plot_annotation <- function(tbl) {
+annotation_per_element <- function(tbl) {
   tbl %>%
     dplyr::group_by(id) %>%
     dplyr::summarize(
@@ -44,7 +44,11 @@ plot_annotation <- function(tbl) {
       num_prefix = dplyr::n_distinct(prefix)
     ) %>%
     dplyr::ungroup() %>%
-    dplyr::collect() %>%
+    dplyr::collect()
+}
+
+plot_annotation <- function(tbl) {
+  tbl %>%
     tidyr::pivot_longer(!id) %>%
     dplyr::mutate(
       name = forcats::fct_recode(name,
@@ -52,11 +56,14 @@ plot_annotation <- function(tbl) {
         "Identifiers" = "num_ann"
       )
     ) %>%
-    ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
+    ggplot2::ggplot(ggplot2::aes(x = value)) +
+    ggplot2::geom_freqpoly(stat = "count", show.legend = FALSE) +
     ggplot2::geom_boxplot(show.legend = FALSE) +
-    ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
     ggplot2::xlab(NULL) +
-    ggplot2::ylab("Number")
+    ggplot2::ylab("Number") +
+    ggplot2::scale_x_log10() +
+    ggplot2::scale_y_log10() +
+    ggplot2::facet_grid(. ~ name, scales = "free")
 }
 
 # Names -------------------------------------------------------------------
@@ -89,7 +96,7 @@ summarize_name_sources <- function(tbl) {
     )
 }
 
-plot_names <- function(tbl) {
+name_per_element <- function(tbl) {
   tbl %>%
     dplyr::group_by(id) %>%
     dplyr::summarise(
@@ -97,7 +104,11 @@ plot_names <- function(tbl) {
       num_prefix = dplyr::n_distinct(prefix)
     ) %>%
     dplyr::ungroup() %>%
-    dplyr::collect() %>%
+    dplyr::collect()
+}
+
+plot_names <- function(tbl) {
+  tbl %>%
     tidyr::pivot_longer(!id) %>%
     dplyr::mutate(
       name = forcats::fct_recode(name,
@@ -105,9 +116,12 @@ plot_names <- function(tbl) {
         "Names" = "num_name"
       )
     ) %>%
-    ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
+    ggplot2::ggplot(ggplot2::aes(x = value)) +
+    ggplot2::geom_freqpoly(stat = "count", show.legend = FALSE) +
     ggplot2::geom_boxplot(show.legend = FALSE) +
-    ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
     ggplot2::xlab(NULL) +
-    ggplot2::ylab("Number")
+    ggplot2::ylab("Number") +
+    ggplot2::scale_x_log10() +
+    ggplot2::scale_y_log10() +
+    ggplot2::facet_grid(. ~ name, scales = "free")
 }

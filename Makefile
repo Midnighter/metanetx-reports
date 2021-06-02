@@ -9,43 +9,49 @@ PROJECT_ROOT:=$(dir $(realpath $(lastword $(MAKEFILE_LIST))))
 ################################################################################
 
 ## Prepare correctly mapped data
-reports: reports/raw_comp_summary.pdf reports/raw_comp_summary.html reports/raw_chem_summary.pdf reports/raw_chem_summary.html reports/raw_reac_summary.pdf reports/raw_reac_summary.html reports/db_compartment_summary.pdf reports/db_compartment_summary.html reports/db_compound_summary.pdf reports/db_compound_summary.html reports/db_reaction_summary.pdf reports/db_reaction_summary.html
+reports: reports/raw_comp_summary.pdf reports/raw_comp_summary.html reports/raw_chem_summary.pdf reports/raw_chem_summary.html reports/raw_reac_summary.pdf reports/raw_reac_summary.html reports/db_compartment_summary.pdf reports/db_compartment_summary.html reports/db_compound_summary.pdf reports/db_compound_summary.html reports/db_reaction_summary.pdf reports/db_reaction_summary.html reports/reduced_set_summary.pdf reports/reduced_set_summary.html
 
 reports/raw_comp_summary.pdf: reports/raw_comp_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_comp_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(comp_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_prop.tsv', comp_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_xref.tsv', comp_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(comp_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_prop.tsv', comp_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_xref.tsv', comp_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_depr.tsv'))"
 
 reports/raw_comp_summary.html:reports/raw_comp_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_comp_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(comp_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_prop.tsv', comp_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_xref.tsv', comp_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(comp_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_prop.tsv', comp_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_xref.tsv', comp_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_comp_depr.tsv'))"
 
 reports/raw_chem_summary.pdf: reports/raw_chem_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_chem_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(chem_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_prop.tsv', chem_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_xref.tsv', chem_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(chem_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_prop.tsv', chem_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_xref.tsv', chem_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_depr.tsv'))"
 
 reports/raw_chem_summary.html: reports/raw_chem_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_chem_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(chem_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_prop.tsv', chem_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_xref.tsv', chem_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(chem_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_prop.tsv', chem_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_xref.tsv', chem_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_chem_depr.tsv'))"
 
 reports/raw_reac_summary.pdf: reports/raw_reac_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_reac_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(reac_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv', reac_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv', reac_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(reac_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv', reac_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv', reac_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv'))"
 
 reports/raw_reac_summary.html: reports/raw_reac_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/raw_reac_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(reac_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv', reac_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv', reac_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(reac_prop = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv', reac_xref = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv', reac_depr = '$(PROJECT_ROOT)../metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv'))"
 
 reports/db_compartment_summary.pdf: reports/db_compartment_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_compartment_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 reports/db_compartment_summary.html: reports/db_compartment_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_compartment_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 reports/db_compound_summary.pdf: reports/db_compound_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_compound_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 reports/db_compound_summary.html: reports/db_compound_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_compound_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 reports/db_reaction_summary.pdf: reports/db_reaction_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_reaction_summary.Rmd', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 reports/db_reaction_summary.html: reports/db_reaction_summary.Rmd
-	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)reports/db_reaction_summary.Rmd', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+
+reports/reduced_set_summary.pdf: reports/reduced_set_summary.Rmd
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'pdf_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
+
+reports/reduced_set_summary.html: reports/reduced_set_summary.Rmd
+	Rscript -e "rmarkdown::render('$(PROJECT_ROOT)$<', output_format = 'html_document',  encoding = 'UTF-8', knit_root_dir = '$(PROJECT_ROOT)', params = list(database = '$(PROJECT_ROOT)../metanetx.sqlite'))"
 
 ################################################################################
 # Self Documenting Commands                                                    #

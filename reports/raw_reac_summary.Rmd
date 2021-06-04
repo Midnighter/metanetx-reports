@@ -11,9 +11,9 @@ output:
     toc_depth: 3
     toc_float: yes
 params:
-  reac_prop: metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv
-  reac_xref: metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv
-  reac_depr: metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv
+  reac_prop: ../metanetx-nf/results/mnx-4.2-processed/processed_reac_prop.tsv
+  reac_xref: ../metanetx-nf/results/mnx-4.2-processed/processed_reac_xref.tsv
+  reac_depr: ../metanetx-nf/results/mnx-4.2-processed/processed_reac_depr.tsv
 ---
 
 ___
@@ -38,6 +38,10 @@ requireNamespace("ggforce")
 `%>%` <- dplyr::`%>%`
 ```
 
+```{r, include=FALSE}
+source("scripts/raw_helpers.R")
+```
+
 ```{r extract-reaction, include=FALSE, cache=TRUE}
 reac_prop <- readr::read_tsv(params$reac_prop)
 reac_xref <- readr::read_tsv(params$reac_xref)
@@ -49,11 +53,10 @@ reac_depr <- readr::read_tsv(params$reac_depr)
 ```{r, include=FALSE}
 numbers <- reac_prop %>%
   dplyr::summarise(
-    num_reacs = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
-    num_ec = length(ec_number[!is.na(ec_number)]),
-    num_balanced = length(is_balanced[!is.na(is_balanced)]),
-    num_trans = length(is_transport[!is.na(is_transport)]),
-    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+    num_reacs = count_not_na(mnx_id),
+    num_ec = count_not_na(ec_number),
+    num_balanced = count_not_na(is_balanced),
+    num_trans = count_not_na(is_transport)
   )
 ```
 
@@ -65,16 +68,14 @@ numbers %>%
       "Number of Reactions",
       "with EC number",
       "balanced",
-      "transport",
-      "Number of Namespaces"
+      "transport"
     ),
-    caption = "The number of reactions and sources for them in MetaNetX."
+    caption = "The number of reactions with properties in MetaNetX."
   )
 ```
 
 ```{r, results='asis'}
 numbers %>%
-  dplyr::select(-num_namespaces) %>%
   dplyr::mutate(
     dplyr::across(.fns = ~ .x / !!(numbers$num_reacs)),
     dplyr::across(.fns = ~ scales::percent(.x, accuracy = 0.01))
@@ -92,86 +93,45 @@ numbers %>%
 ```
 
 ```{r, results='asis'}
-reac_prop %>%
-  dplyr::select(prefix) %>%
-  dplyr::count(prefix) %>%
-  dplyr::arrange(prefix) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c("Namespace", "Frequency"),
-    caption = "The source namespaces from which reactions are included in MetaNetX."
-  )
+reac_prop %>% summarize_annotation()
+```
+
+```{r, results='asis'}
+reac_prop %>% summarize_annotation_sources()
 ```
 
 ## Cross-References
 
 ```{r, results='asis'}
-reac_xref %>%
-  dplyr::summarise(
-    num_reacs = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
-    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
-  ) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c(
-      "Number of reactions",
-      "Number of Namespaces"
-    ),
-    caption = "reactions with cross-references to other databases."
-  )
+reac_xref %>% summarize_annotation()
 ```
 
 ```{r, results='asis'}
-reac_xref %>%
-  dplyr::select(prefix) %>%
-  dplyr::count(prefix) %>%
-  dplyr::arrange(prefix) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c("Namespace", "Frequency"),
-    caption = "The namespaces to which cross-references from MetaNetX are established."
-  )
+reac_xref %>% summarize_annotation_sources()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='Number of namespaces and cross-references per reaction in MetaNetX.'}
-reac_xref %>%
-  dplyr::group_by(mnx_id) %>%
-  dplyr::summarise(
-    num_xref = dplyr::n_distinct(identifier[!is.na(identifier)]),
-    num_prefix = dplyr::n_distinct(prefix[!is.na(prefix)])
-  ) %>%
-  dplyr::ungroup() %>%
-  tidyr::pivot_longer(!mnx_id) %>%
-  dplyr::mutate(
-    name = forcats::fct_recode(name,
-      "Namespaces" = "num_prefix",
-      "Cross-References" = "num_xref"
-    )
-  ) %>%
-  ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
-  ggplot2::geom_boxplot(show.legend = FALSE) +
-  ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
-  ggplot2::scale_y_log10() +
-  ggplot2::xlab(NULL) +
-  ggplot2::ylab("Number")
+```{r, include=FALSE}
+ann_per_reaction <- reac_xref %>% annotation_per_element()
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct identifiers per reaction.'}
+ann_per_reaction %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_ann)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Identifiers per Reaction") +
+  ggplot2::ylab("Cumulative Probability")
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per reaction and the number of unique source namespaces per reaction. Only reactions that have more than two identifiers are included.'}
+ann_per_reaction %>%
+  dplyr::filter(num_ann > 2) %>%
+  plot_annotation()
 ```
 
 ## Deprecated MetaNetX Identifiers
 
 ```{r, results='asis'}
-reac_depr %>%
-  dplyr::summarise(
-    num_reacs = dplyr::n_distinct(current_id[!is.na(current_id)]),
-    num_deprecated = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
-  ) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c(
-      "Number of Reactions",
-      "Number of Deprecated Identifiers"
-    ),
-    caption = "The total number of reactions and how many deprecated identifiers there are."
-  )
+reac_depr %>% summarize_deprecated()
 ```
 
 ```{r, fig.align='center', dpi=300, fig.cap='Number of deprecated MNX identifiers per reaction.'}
@@ -179,7 +139,7 @@ if (nrow(reac_depr) > 0) {
   reac_depr %>%
     dplyr::group_by(current_id) %>%
     dplyr::summarise(
-      num_depr = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+      num_depr = na.omit(deprecated_id) %>% dplyr::n_distinct()
     ) %>%
     dplyr::ungroup() %>%
     ggplot2::ggplot(ggplot2::aes(x = "Deprecated", y = num_depr)) +

@@ -3,8 +3,62 @@
 requireNamespace("dplyr")
 requireNamespace("knitr")
 requireNamespace("tidyr")
+requireNamespace("stringr")
 requireNamespace("ggplot2")
 `%>%` <- dplyr::`%>%`
+
+# Properties --------------------------------------------------------------
+
+summarize_formula <- function(tbl, column) {
+  tibble::tibble(
+    n = tbl %>%
+      dplyr::summarise(n = COUNT({{ column }})) %>%
+      dplyr::pull(n),
+    num_star = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%*%") %>%
+      dplyr::summarise(num_star = COUNT({{ column }})) %>%
+      dplyr::pull(num_star),
+    num_rest = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%R%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("R[^a-z]", {{ column }})) %>%
+      dplyr::summarise(num_rest = dplyr::n()) %>%
+      dplyr::pull(num_rest),
+    num_z = tbl %>%
+      dplyr::filter({{ column }} %LIKE% "%Z%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("Z[^a-y]", {{ column }})) %>%
+      dplyr::summarise(num_z = dplyr::n()) %>%
+      dplyr::pull(num_z),
+  )
+}
+
+summarize_inchi <- function(tbl) {
+  tibble::tibble(
+    n = tbl %>%
+      dplyr::summarise(n = COUNT(inchi)) %>%
+      dplyr::pull(n),
+    num_star = tbl %>%
+      dplyr::filter(inchi %LIKE% "%*%") %>%
+      dplyr::collect() %>%
+      dplyr::pull(inchi) %>%
+      stringr::str_extract("^InChI=1[SB]/.*?/") %>%
+      stringr::str_which(stringr::fixed("*")) %>%
+      length(),
+    num_rest = tbl %>%
+      dplyr::filter(inchi %LIKE% "%R%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("R[^a-z]", inchi)) %>%
+      dplyr::summarise(num_rest = dplyr::n()) %>%
+      dplyr::pull(num_rest),
+    num_z = tbl %>%
+      dplyr::filter(inchi %LIKE% "%Z%") %>%
+      dplyr::collect() %>%
+      dplyr::filter(grepl("Z[^a-y]", inchi)) %>%
+      dplyr::summarise(num_z = dplyr::n()) %>%
+      dplyr::pull(num_z),
+  )
+}
 
 # Annotation --------------------------------------------------------------
 

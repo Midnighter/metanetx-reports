@@ -39,9 +39,9 @@ requireNamespace("ggplot2")
 ```
 
 ```{r, include=FALSE}
+source("scripts/raw_helpers.R")
 source("scripts/venn.R")
 ```
-
 
 ```{r extract-chemical, include=FALSE, cache=TRUE}
 chem_prop <- readr::read_tsv(params$chem_prop)
@@ -54,14 +54,13 @@ chem_depr <- readr::read_tsv(params$chem_depr)
 ```{r, include=FALSE}
 numbers <- chem_prop %>%
   dplyr::summarise(
-    num_chems = dplyr::n_distinct(mnx_id[!is.na(mnx_id)]),
-    num_formula = length(formula[!is.na(formula)]),
-    num_charge = length(charge[!is.na(charge)]),
-    num_smiles = length(smiles[!is.na(smiles)]),
-    num_mass = length(mass[!is.na(mass)]),
-    num_inchi = length(inchi[!is.na(inchi)]),
-    num_inchi_key = length(inchi_key[!is.na(inchi_key)]),
-    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
+    num_chems = count_not_na(mnx_id),
+    num_formula = count_not_na(formula),
+    num_charge = count_not_na(charge),
+    num_smiles = count_not_na(smiles),
+    num_mass = count_not_na(mass),
+    num_inchi = count_not_na(inchi),
+    num_inchi_key = count_not_na(inchi_key)
   )
 ```
 
@@ -77,10 +76,9 @@ numbers %>%
       "with SMILES",
       "with mass",
       "with InChI",
-      "with InChIKey",
-      "Number of Namespaces"
+      "with InChIKey"
     ),
-    caption = "The number of chemicals with properties and sources for them in MetaNetX."
+    caption = "The number of chemicals with properties in MetaNetX."
   )
 ```
 
@@ -114,38 +112,19 @@ plot_venn_mass(chem_prop, mnx_id)
 plot_venn_charge(chem_prop, mnx_id)
 ```
 
-```{r, results='asis'}
-chem_prop %>%
-  dplyr::select(prefix) %>%
-  dplyr::count(prefix) %>%
-  dplyr::arrange(prefix) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c("Namespace", "Frequency"),
-    caption = "The source namespaces from which chemicals are included in MetaNetX."
-  )
-```
-
 ```{r, include=FALSE}
 summarize_formula <- function(tbl, column) {
   return(
     tbl %>%
       dplyr::summarize(
         n = dplyr::n(),
-        num_star = grepl("*", {{ column }}, fixed = TRUE) %>%
-          as.integer() %>%
-          sum(),
-        num_rest = grepl("R[^a-z]", {{ column }}) %>%
-          as.integer() %>%
-          sum(),
-        num_z = grepl("Z[^a-y]", {{ column }}) %>%
-          as.integer() %>%
-          sum()
+        num_star = grepl("*", {{ column }}, fixed = TRUE) %>% sum(),
+        num_rest = grepl("R[^a-z]", {{ column }}) %>% sum(),
+        num_z = grepl("Z[^a-y]", {{ column }}) %>% sum()
       )
   )
 }
 ```
-
 
 ```{r, results='asis'}
 chem_prop %>%
@@ -160,22 +139,6 @@ chem_prop %>%
       "with `Z[z]`"
     ),
     caption = "Chemical formulae that are not fully determined."
-  )
-```
-
-```{r, results='asis'}
-chem_prop %>%
-  tidyr::drop_na(inchi) %>%
-  summarize_formula(inchi) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c(
-      "Number of InChIs",
-      "with `*`",
-      "with `R`",
-      "with `Z[z]`"
-    ),
-    caption = "InChIs that are not fully determined."
   )
 ```
 
@@ -196,23 +159,29 @@ chem_prop %>%
 ```
 
 ```{r, include=FALSE}
-duplicate_inchi <- chem_prop %>%
-  tidyr::drop_na(inchi) %>%
-  dplyr::count(inchi) %>%
-  dplyr::filter(n > 1)
-```
-
-```{r, fig.align='center', dpi=300, fig.cap='Multiple occurrences of the same InChI.'}
-duplicate_inchi %>%
-  ggplot2::ggplot(ggplot2::aes(x = n)) +
-  ggplot2::geom_histogram(stat = "count", color = "white") +
-  ggplot2::xlab("Multiples of InChI") +
-  ggplot2::ylab("Count")
+summarize_inchi <- function(tbl) {
+  tbl %>%
+    dplyr::summarize(
+      n = dplyr::n(),
+      num_star = inchi %>%
+        stringr::str_which(stringr::fixed("*")) %>%
+        stringr::str_extract("^InChI=1[SB]/.*?/") %>%
+        stringr::str_which(stringr::fixed("*")) %>%
+        length(),
+      num_rest = inchi %>%
+        stringr::str_detect("R[^a-z]") %>%
+        sum(),
+      num_z = inchi %>%
+        stringr::str_detect("Z[^a-y]") %>%
+        sum()
+    )
+}
 ```
 
 ```{r, results='asis'}
-duplicate_inchi %>%
-  summarize_formula(inchi) %>%
+chem_prop %>%
+  tidyr::drop_na(inchi) %>%
+  summarize_inchi() %>%
   knitr::kable(
     format.args = list(big.mark = ","),
     col.names = c(
@@ -221,92 +190,92 @@ duplicate_inchi %>%
       "with `R`",
       "with `Z[z]`"
     ),
-    caption = "Duplicated InChIs that are not fully determined."
+    caption = "InChIs that are not fully determined."
   )
+```
+
+```{r, include=FALSE}
+duplicate_inchi <- chem_prop %>%
+  tidyr::drop_na(inchi) %>%
+  dplyr::count(inchi) %>%
+  dplyr::filter(n > 1)
+```
+
+```{r, fig.align='center', dpi=300, fig.cap='Multiple occurrences of the same InChI.'}
+if (nrow(duplicate_inchi) > 0) {
+  duplicate_inchi %>%
+    ggplot2::ggplot(ggplot2::aes(x = n)) +
+    ggplot2::geom_histogram(stat = "count", color = "white") +
+    ggplot2::xlab("Multiples of InChI") +
+    ggplot2::ylab("Count")
+}
+```
+
+```{r, results='asis'}
+if (nrow(duplicate_inchi) > 0) {
+  duplicate_inchi %>%
+    summarize_inchi() %>%
+    knitr::kable(
+      format.args = list(big.mark = ","),
+      col.names = c(
+        "Number of InChIs",
+        "with `*`",
+        "with `R`",
+        "with `Z[z]`"
+      ),
+      caption = "Duplicated InChIs that are not fully determined."
+    )
+}
+```
+
+```{r, results='asis'}
+chem_prop %>% summarize_annotation()
+```
+
+```{r, results='asis'}
+chem_prop %>% summarize_annotation_sources()
 ```
 
 ## Cross-References
 
 ```{r, results='asis'}
-chem_xref %>%
-  dplyr::summarise(
-    num_xref = dplyr::n(),
-    num_namespaces = dplyr::n_distinct(prefix[!is.na(prefix)])
-  ) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c(
-      "Number of Cross-References",
-      "Number of Namespaces"
-    ),
-    caption = "Chemicals with cross-references to other databases."
-  )
+chem_xref %>% summarize_annotation()
 ```
 
 ```{r, results='asis'}
-chem_xref %>%
-  dplyr::select(prefix) %>%
-  dplyr::count(prefix) %>%
-  dplyr::arrange(prefix) %>%
-  knitr::kable(
-    format.args = list(big.mark = ","),
-    col.names = c("Namespace", "Frequency"),
-    caption = "The namespaces to which cross-references from MetaNetX are established."
-  )
+chem_xref %>% summarize_annotation_sources()
 ```
 
 ```{r, include=FALSE}
-num_xref <- chem_xref %>%
-  dplyr::group_by(mnx_id) %>%
-  dplyr::summarise(
-    num_xref = dplyr::n_distinct(identifier[!is.na(identifier)]),
-    num_prefix = dplyr::n_distinct(prefix[!is.na(prefix)])
-  ) %>%
-  dplyr::ungroup() %>%
-  tidyr::pivot_longer(!mnx_id) %>%
-  dplyr::mutate(
-    name = forcats::fct_recode(name,
-      "Namespaces" = "num_prefix",
-      "Cross-References" = "num_xref"
-    )
-  )
+ann_per_compound <- chem_xref %>% annotation_per_element()
 ```
 
+```{r, fig.align='center', dpi=300, fig.cap='The empirical cumulative distribution function (eCDF) of the number of distinct identifiers per chemical.'}
+ann_per_compound %>%
+  ggplot2::ggplot(ggplot2::aes(x = num_ann)) +
+  ggplot2::stat_ecdf() +
+  ggplot2::xlab("Number of Identifiers per Compound") +
+  ggplot2::ylab("Cumulative Probability")
+```
 
-```{r, fig.align='center', dpi=300, fig.cap='Number of namespaces and cross-references per chemical in MetaNetX. Only shown for chemicals where this number is greater than one.'}
-num_xref %>%
-  dplyr::filter(value > 1) %>%
-  ggplot2::ggplot(ggplot2::aes(x = name, y = value)) +
-  ggplot2::geom_boxplot(show.legend = FALSE) +
-  ggplot2::geom_violin(scale = "width", alpha = 0, show.legend = FALSE) +
-  ggplot2::scale_y_log10() +
-  ggplot2::xlab(NULL) +
-  ggplot2::ylab("Number")
+```{r, fig.align='center', dpi=300, fig.cap='The number of identifiers per chemical and the number of unique source namespaces per chemical. Only chemicals that have more than two identifiers are included.'}
+ann_per_compound %>%
+  dplyr::filter(num_ann > 2) %>%
+  plot_annotation()
 ```
 
 ## Deprecated MetaNetX Identifiers
 
 ```{r, results='asis'}
-chem_depr %>%
-  dplyr::summarise(
-    num_chems = dplyr::n_distinct(current_id[!is.na(current_id)]),
-    num_deprecated = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
-  ) %>%
-  knitr::kable(
-    col.names = c(
-      "Number of Chemicals",
-      "Number of Deprecated Identifiers"
-    ),
-    caption = "The total number of chemicals and how many deprecated identifiers there are."
-  )
+chem_depr %>% summarize_deprecated()
 ```
 
-```{r, fig.align='center', dpi=300, fig.cap='Number of deprecated MNX identifiers per chemical'}
+```{r, fig.align='center', dpi=300, fig.cap='Number of deprecated MNX identifiers per chemical.'}
 if (nrow(chem_depr) > 0) {
   chem_depr %>%
     dplyr::group_by(current_id) %>%
     dplyr::summarise(
-      num_depr = dplyr::n_distinct(deprecated_id[!is.na(deprecated_id)]),
+      num_depr = na.omit(deprecated_id) %>% dplyr::n_distinct()
     ) %>%
     dplyr::ungroup() %>%
     ggplot2::ggplot(ggplot2::aes(x = "Deprecated", y = num_depr)) +

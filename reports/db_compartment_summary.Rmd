@@ -11,7 +11,7 @@ output:
     toc_depth: 3
     toc_float: yes
 params:
-  database: "metanetx.sqlite"
+  database: "../metanetx.sqlite"
 ---
 
 ___
